@@ -1,0 +1,43 @@
+name: Tu dong quet YouTube Playlist
+
+on:
+  schedule:
+    # 20:00 UTC = 03:00 sáng giờ Việt Nam mỗi ngày
+    - cron: '0 20 * * *'
+  push:
+    paths:
+      - 'playlists.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tai ma nguon tu repo
+        uses: actions/checkout@v4
+
+      - name: Cai dat Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cai dat yt-dlp ban moi nhat
+        run: pip install -U yt-dlp
+
+      - name: Chay script quet link video
+        run: python step1_quet_link.py
+
+      - name: Luu playlist_data.json len GitHub neu co thay doi
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add playlist_data.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: cap nhat danh sach video YouTube tu dong"
+            git push
+          else
+            echo "Khong co video moi."
+          fi

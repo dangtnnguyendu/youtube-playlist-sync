@@ -1,0 +1,2417 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Playlist Pháp-Việt">
+  <title>Đồng Bộ Playlist YouTube - Song Ngữ Pháp Việt</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 12px 14px 48px;
+      background: #121212;
+      color: #eee;
+    }
+    .panel {
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 10px;
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      border: 1px solid #2c2c2c;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    select, input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      padding: 10px 12px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      touch-action: manipulation;
+    }
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-yellow { background: #ffeb3b; color: #111; }
+    .btn-purple { background: #9c27b0; color: #fff; }
+    .btn-blue { background: #2196f3; color: #fff; }
+    .btn-teal { background: #00897b; color: #fff; }
+    .btn-green { background: #4caf50; color: #fff; }
+    .btn-orange { background: #ff9800; color: #111; }
+    .btn-red { background: #d32f2f; color: #fff; }
+    .btn-gray { background: #383838; color: #eee; }
+    .btn-off { background: #242424; color: #777; border: 1px solid #383838; }
+    .btn-unpinned { background: #333; color: #ffd54f; border: 1px solid #555; }
+    .btn-pinned { background: #ff9800; color: #111; border: 1px solid #ffb74d; }
+
+    details {
+      background: #161616;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2b2b2b;
+      font-size: 13px;
+    }
+    summary { cursor: pointer; color: #80deea; font-weight: 600; user-select: none; }
+    #playlistDrawer summary { color: #ffd54f; }
+    #rawSubDrawer summary { color: #a5d6a7; }
+    .drawer-grid { display: grid; gap: 10px; margin-top: 10px; }
+    .hint-text { color: #aaa; font-size: 12px; line-height: 1.45; }
+    label.chk-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #ccc;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Khung phát video & toàn màn hình đẩy video sát mép trên */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .video-wrapper.pseudo-fs,
+    .video-wrapper:fullscreen,
+    .video-wrapper:-webkit-full-screen {
+      position: fixed !important;
+      top: 0; left: 0;
+      width: 100vw !important;
+      height: 100dvh !important;
+      z-index: 99999;
+      border-radius: 0;
+      background: #000;
+      display: flex !important;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    #ytPlayer { width: 100%; height: 100%; display: block; }
+
+    .video-wrapper.pseudo-fs #ytPlayer,
+    .video-wrapper:fullscreen #ytPlayer,
+    .video-wrapper:-webkit-full-screen #ytPlayer {
+      width: 100% !important;
+      max-width: calc(100vh * 16 / 9);
+      max-width: calc(100dvh * 16 / 9);
+      height: auto !important;
+      aspect-ratio: 16 / 9;
+      flex-shrink: 0;
+    }
+
+    .video-wrapper.dragging-sub #ytPlayer {
+      pointer-events: none !important;
+    }
+
+    /* Nhãn nhân vật & Karaoke song ngữ */
+    .speaker-badge {
+      display: inline-block;
+      background: rgba(255, 152, 0, 0.22);
+      color: #ffcc80;
+      border: 1px solid rgba(255, 183, 77, 0.35);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+      letter-spacing: 0.3px;
+    }
+    .subtitle-overlay.mode-horizontal .speaker-badge {
+      display: block;
+      width: fit-content;
+      margin: 0 auto 3px;
+    }
+    .v-speaker {
+      display: inline-block;
+      color: #ffcc80;
+      font-size: 9.5px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .k-seg { color: #ffffff; transition: color 0.1s ease; }
+    .k-seg.active,
+    .sub-fr .k-seg.active,
+    .v-fr .k-seg.active,
+    .line-fr .k-seg.active { color: #ffb300; }
+    .sub-vi .k-seg.active,
+    .v-vi .k-seg.active,
+    .line-vi .k-seg.active { color: #ff3b30; }
+
+    /* Phụ đề ngang */
+    .subtitle-overlay.mode-horizontal {
+      position: absolute;
+      bottom: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 94%;
+      text-align: center;
+      pointer-events: auto;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      z-index: 20;
+    }
+    .video-wrapper.pseudo-fs .subtitle-overlay.mode-horizontal,
+    .video-wrapper:fullscreen .subtitle-overlay.mode-horizontal,
+    .video-wrapper:-webkit-full-screen .subtitle-overlay.mode-horizontal {
+      bottom: max(16px, env(safe-area-inset-bottom, 16px));
+      max-width: 95%;
+    }
+    .subtitle-overlay.mode-horizontal:active { cursor: grabbing; }
+    .subtitle-overlay.mode-horizontal .subtitle-box {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.36);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 6px 14px;
+      border-radius: 8px;
+      line-height: 1.38;
+      max-width: 100%;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.85);
+    }
+    .subtitle-overlay.mode-horizontal .subtitle-box:empty { display: none; }
+    .sub-fr { color: #ffffff; font-size: 16.5px; font-weight: 600; }
+    .sub-vi { color: #ffffff; font-size: 14.5px; font-weight: 500; margin-top: 3px; }
+
+    .video-wrapper.pseudo-fs .mode-horizontal .sub-fr,
+    .video-wrapper:fullscreen .mode-horizontal .sub-fr,
+    .video-wrapper:-webkit-full-screen .mode-horizontal .sub-fr { font-size: 21px; }
+    .video-wrapper.pseudo-fs .mode-horizontal .sub-vi,
+    .video-wrapper:fullscreen .mode-horizontal .sub-vi,
+    .video-wrapper:-webkit-full-screen .mode-horizontal .sub-vi { font-size: 18px; }
+
+    /* Phụ đề dọc */
+    .subtitle-overlay.mode-vertical {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      height: calc(100% - 54px);
+      width: 17%;
+      min-width: 135px;
+      background: rgba(0, 0, 0, 0.34);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      pointer-events: auto;
+      z-index: 20;
+      text-align: left;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+    }
+    .subtitle-overlay.mode-vertical:empty { display: none; }
+
+    .v-drag-handle {
+      flex-shrink: 0;
+      padding: 4px 6px;
+      background: rgba(0, 0, 0, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 9.5px;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.4px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .v-drag-handle:active { cursor: grabbing; color: #ffb300; }
+
+    .v-sub-list {
+      flex: 1;
+      padding: 5px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .video-wrapper.pseudo-fs .subtitle-overlay.mode-vertical,
+    .video-wrapper:fullscreen .subtitle-overlay.mode-vertical,
+    .video-wrapper:-webkit-full-screen .subtitle-overlay.mode-vertical {
+      width: 12.5%;
+      min-width: 120px;
+      height: calc(100% - 28px);
+    }
+
+    .v-sub-item {
+      padding: 4px 5px;
+      margin-bottom: 4px;
+      border-radius: 5px;
+      cursor: pointer;
+      opacity: 0.75;
+      border-left: 2px solid transparent;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .v-sub-item:active { background: rgba(255, 255, 255, 0.12); }
+    .v-sub-item.active {
+      opacity: 1;
+      background: rgba(255, 179, 0, 0.14);
+      border-left: 2px solid rgba(255, 179, 0, 0.9);
+    }
+    .v-time {
+      display: block;
+      font-size: 8.5px;
+      font-family: monospace;
+      color: #bdbdbd;
+      margin-bottom: 2px;
+    }
+    .v-fr { color: #ffffff; font-size: 10.5px; font-weight: 600; line-height: 1.3; word-break: break-word; }
+    .v-vi { color: #ffffff; font-size: 9.5px; font-weight: 400; line-height: 1.28; margin-top: 2px; word-break: break-word; }
+    .video-wrapper.pseudo-fs .v-fr,
+    .video-wrapper:fullscreen .v-fr,
+    .video-wrapper:-webkit-full-screen .v-fr { font-size: 11.5px; }
+    .video-wrapper.pseudo-fs .v-vi,
+    .video-wrapper:fullscreen .v-vi,
+    .video-wrapper:-webkit-full-screen .v-vi { font-size: 10.5px; }
+
+    .floating-controls {
+      position: absolute;
+      top: 56px;
+      right: 12px;
+      z-index: 25;
+      display: flex;
+      gap: 6px;
+      transition: right 0.2s;
+    }
+    .video-wrapper.has-vertical-sub .floating-controls { right: calc(17% + 16px); }
+    .video-wrapper.pseudo-fs.has-vertical-sub .floating-controls,
+    .video-wrapper:fullscreen.has-vertical-sub .floating-controls,
+    .video-wrapper:-webkit-full-screen.has-vertical-sub .floating-controls { right: calc(12.5% + 18px); }
+    .floating-btn {
+      background: rgba(0, 0, 0, 0.42);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    .transcript-box {
+      margin-top: 14px;
+      max-height: 290px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #1e1e1e;
+      border-radius: 10px;
+      padding: 8px;
+      border: 1px solid #2c2c2c;
+    }
+    .transcript-box:empty { display: none; }
+    .line {
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      gap: 12px;
+      font-size: 15px;
+      border-bottom: 1px solid #262626;
+    }
+    .line:active, .line:hover { background: #2a2a2a; }
+    .line.active { background: #332b00; }
+    .line-fr { color: #ffffff; }
+    .line.active .line-fr { font-weight: 600; }
+    .time { color: #888; min-width: 48px; font-family: monospace; padding-top: 2px; font-size: 13px; }
+    .line-vi { color: #ffffff; font-size: 14px; margin-top: 4px; opacity: 0.92; }
+    .line.active .line-vi { opacity: 1; }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    @media (max-width: 720px) { .ai-grid { grid-template-columns: 1fr; } }
+    textarea {
+      width: 100%;
+      height: 125px;
+      background: #141414;
+      color: #dcdcdc;
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+    .box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .header-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    #status { color: #4caf50; font-size: 13px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+
+  <!-- BẢNG ĐIỀU KHIỂN CHÍNH -->
+  <div class="panel">
+    <div class="row">
+      <select id="videoSelect"><option value="">-- Đang khởi tạo kho Playlist... --</option></select>
+      <button type="button" class="btn-unpinned" id="pinBtn" title="Ghim video đang học">📌 Ghim</button>
+      <button type="button" class="btn-purple" id="randomBtn">🎲 Random</button>
+      <button type="button" class="btn-green" id="confirmWatchedBtn">✓ Xác nhận đã xem</button>
+    </div>
+
+    <div class="row">
+      <button type="button" class="btn-blue" id="toggleFrBtn">🇫🇷 Pháp: BẬT</button>
+      <button type="button" class="btn-blue" id="toggleViBtn">🇻🇳 Việt: BẬT</button>
+      <button type="button" class="btn-teal" id="toggleLayoutBtn">📐 Kiểu PĐ: Ngang</button>
+      <button type="button" class="btn-yellow" id="toggleFsBtn">⛶ Toàn màn hình</button>
+      <button type="button" class="btn-orange" id="quickSyncBtn">🔄 Đồng bộ ngay</button>
+    </div>
+
+    <div id="status">Đang đồng bộ danh sách video từ GitHub...</div>
+
+    <!-- 1. CẤU HÌNH & ĐỒNG BỘ PLAYLIST CỐ ĐỊNH -->
+    <details id="playlistDrawer">
+      <summary>🔗 Đồng bộ Danh sách phát YouTube (Tự động qua GitHub hoặc Trực tiếp)</summary>
+      <div class="drawer-grid">
+        <div class="row">
+          <input type="text" id="playlistUrlInput" placeholder="Dán link Playlist YouTube cố định (nếu muốn quét trực tiếp từ trình duyệt)">
+          <button type="button" class="btn-orange" id="saveSyncPlaylistBtn">🔄 Lưu & Đồng bộ Playlist</button>
+        </div>
+        <div class="row">
+          <label class="chk-label">
+            <input type="checkbox" id="autoSyncChk" checked>
+            Tự động đồng bộ tìm video mới mỗi khi mở trang
+          </label>
+        </div>
+        <div class="hint-text" id="playlistMetaInfo">Đang kiểm tra nguồn dữ liệu GitHub...</div>
+      </div>
+    </details>
+
+    <!-- 2. NẠP BẢN CHÉP LỜI THÔ CHO VIDEO ĐANG CHỌN -->
+    <details id="rawSubDrawer">
+      <summary>📝 Nạp bản chép lời thô cho video đang chọn (Để dịch qua AI)</summary>
+      <div class="drawer-grid">
+        <textarea id="rawTranscriptInput" placeholder="Mở video đang chọn trên YouTube -> copy phần 'Hiển thị bản chép lời' (0:00 Bonjour...) hoặc file .srt / start|end|text -> dán vào đây..."></textarea>
+        <div class="row">
+          <button type="button" class="btn-green" id="applyRawSubBtn">▶ Gắn phụ đề thô vào video đang chọn</button>
+          <button type="button" class="btn-gray" id="clearRawInputBtn">↺ Xóa ô nhập</button>
+        </div>
+      </div>
+    </details>
+
+    <!-- 3. SAO LƯU JSON KÈM PHỤ ĐỀ & RESET TIẾN ĐỘ XEM -->
+    <details id="backupDrawer">
+      <summary>💾 Kho sao lưu Phụ đề, Nạp JSON thủ công & Reset tiến độ xem</summary>
+      <div class="drawer-grid">
+        <div class="hint-text">
+          • Khi chạy trên GitHub Pages, web tự động kéo file <b>playlist_data.json</b> mới nhất mà không cần nạp tay.<br>
+          • Bạn vẫn có thể xuất file JSON sao lưu (kèm toàn bộ phụ đề song ngữ đã tạo trên iPad) để cất giữ an toàn.<br>
+          • Bấm <b>↺ Xem lại từ đầu</b> để đưa toàn bộ video quay lại vòng Random mà vẫn giữ nguyên mọi phụ đề song ngữ đã tạo.
+        </div>
+        <div class="row">
+          <label>📥 <b>Nạp JSON thủ công (<code>playlist_data.json</code> hoặc file sao lưu)</b>:
+            <input type="file" id="importBackupInput" accept=".json,application/json">
+          </label>
+        </div>
+        <div class="row">
+          <button type="button" class="btn-purple" id="resetWatchedBtn">↺ Xem lại từ đầu (Reset đã xem - Giữ phụ đề)</button>
+          <button type="button" class="btn-blue" id="exportBackupBtn">📤 Xuất JSON sao lưu (Kèm phụ đề)</button>
+          <button type="button" class="btn-red" id="wipeNewDbBtn">🗑️ Xóa sạch kho này</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- KHUNG PHÁT VIDEO -->
+  <div class="video-wrapper" id="videoWrapper">
+    <div class="floating-controls">
+      <button type="button" class="floating-btn" id="floatingLayoutBtn">📐 PĐ: Ngang</button>
+      <button type="button" class="floating-btn" id="floatingFsBtn">⛶ Toàn màn hình</button>
+    </div>
+    <div id="ytPlayer"></div>
+    <div id="subtitleOverlay" class="subtitle-overlay mode-horizontal">
+      <div id="subtitleBox" class="subtitle-box"></div>
+    </div>
+  </div>
+
+  <!-- DỊCH PHỤ ĐỀ QUA AI & LƯU VÀO KHO -->
+  <div class="ai-grid">
+    <div class="panel" style="margin-bottom:0;">
+      <div class="box-header">
+        <span>1. Prompt + Phụ đề gốc (Gửi AI)</span>
+        <div class="header-actions">
+          <button type="button" class="btn-blue" id="copyRawBtn">📋 Copy trọn bộ</button>
+          <button type="button" class="btn-teal" id="downloadTxtBtn">📥 Tải file .txt</button>
+        </div>
+      </div>
+      <textarea id="exportBox" readonly placeholder="Sau khi nạp bản chép lời thô cho video đang chọn, Prompt nén gọn sẽ tự tạo ở đây..."></textarea>
+    </div>
+
+    <div class="panel" style="margin-bottom:0;">
+      <div class="box-header">
+        <span>2. Dán JSON song ngữ từ AI</span>
+        <button type="button" class="btn-green" id="saveSubBtn">💾 Lưu phụ đề vào kho</button>
+      </div>
+      <textarea id="importBox" placeholder='Dán mảng JSON [{"from_i": 0, "to_i": 1, "speaker": "...", "fr": "...", "vi": "..."}] từ AI vào đây rồi bấm Lưu...'></textarea>
+    </div>
+  </div>
+
+  <!-- DANH SÁCH CÂU THOẠI -->
+  <div class="transcript-box" id="transcriptBox"></div>
+
+  <!-- KHUNG ẨN ĐỒNG BỘ PLAYLIST QUA YOUTUBE IFRAME API -->
+  <div style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;">
+    <div id="ytSyncWorker"></div>
+  </div>
+
+  <script>
+    const AI_PROMPT = `Bạn là chuyên gia biên tập và dịch thuật phụ đề song ngữ Pháp - Việt cho video hội thoại.
+Dưới đây là thông tin video (link, tiêu đề) và mảng JSON rút gọn chứa chỉ số dòng ("i") cùng lời thoại tiếng Pháp ("fr").
+
+NHIỆM VỤ CỦA BẠN:
+1. Gộp câu theo từng lượt nói / suy nghĩ của nhân vật:
+  - Gộp các mảnh liên tiếp thuộc cùng một nhân vật thành một đoạn hoàn chỉnh.
+  - Nếu một dòng bị dính lời của 2 nhân vật khác nhau (hoặc dính lời thoại và lời dẫn chuyện), hãy tách thành 2 phần tử riêng biệt và dùng chung chỉ số "from_i" / "to_i" tại điểm giao nhau.
+  - Nếu một nhân vật nói hoặc độc thoại quá dài (trên 3 câu), hãy ngắt thành các đoạn ngắn tự nhiên (1-3 câu/đoạn) để dễ đọc trên màn hình.
+2. Xác định người nói ("speaker"):
+  - Ghi rõ tên nhân vật đang nói hoặc "(Suy nghĩ)" cho lời dẫn chuyện nội tâm (nếu không rõ tên có thể để trống "").
+3. Đánh bóng tiếng Pháp ("fr") & Dịch tiếng Việt ("vi"):
+  - Sửa lỗi chính tả, thêm dấu câu chuẩn ngữ pháp tiếng Pháp.
+  - Dịch sang tiếng Việt tự nhiên, đúng ngữ cảnh. Không dùng dấu ngoặc kép (") bên trong chuỗi dịch, thay bằng « ».
+
+ĐỊNH DẠNG ĐẦU RA BẮT BUỘC (Chỉ trả về duy nhất 1 khối JSON hợp lệ):
+[
+  {"from_i": 0, "to_i": 1, "speaker": "Tên nhân vật", "fr": "Đoạn tiếng Pháp hoàn chỉnh.", "vi": "Đoạn dịch tiếng Việt tương ứng."}
+]
+
+DỮ LIỆU VIDEO VÀ PHỤ ĐỀ THÔ CẦN XỬ LÝ:`;
+
+    // --- KHO LƯU TRỮ ĐỘC LẬP ---
+    const DB_NAME = 'YtPlaylistSyncSystem_v1';
+    const STORE_NAME = 'playlistStore';
+    const DB_KEY = 'state_v1';
+
+    const LAYOUT_PREF_KEY = 'yt_pl_sync_layout_v1';
+    const PINNED_VIDEO_KEY = 'yt_pl_sync_pinned_id_v1';
+    const PINNED_TIME_KEY = 'yt_pl_sync_pinned_time_v1';
+    const SUB_POS_PREF_KEY = 'yt_pl_sync_sub_pos_v1';
+
+    function loadSavedSubPos() {
+      try {
+        const raw = localStorage.getItem(SUB_POS_PREF_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            horizontal: parsed.horizontal || null,
+            horizontalFs: parsed.horizontalFs || null,
+            vertical: parsed.vertical || null
+          };
+        }
+      } catch {}
+      return { horizontal: null, horizontalFs: null, vertical: null };
+    }
+
+    let customSubPos = loadSavedSubPos();
+
+    let dbState = {
+      schema: 'yt_playlist_sync_v1',
+      updated_at: '',
+      playlist_url: '',
+      playlist_id: '',
+      last_synced_at: '',
+      auto_sync: true,
+      pinned_id: '',
+      pinned_time: 0,
+      custom_sub_pos: customSubPos,
+      watched_ids: [],
+      videos: []
+    };
+
+    let videoMap = {};
+    let watchedSet = new Set();
+    let currentVideoId = '';
+    let currentTranscript = [];
+    let activeIndex = -1;
+    let activeSubIndex = -1;
+
+    let ytPlayer = null;
+    let ytSyncWorker = null;
+    let ytApiReadyPromise = null;
+    let isSyncingNow = false;
+
+    let showFr = true;
+    let showVi = true;
+    let subLayout = localStorage.getItem(LAYOUT_PREF_KEY) || 'horizontal';
+    let lastSavedTime = 0;
+
+    const videoWrapper = document.getElementById('videoWrapper');
+    const videoSelect = document.getElementById('videoSelect');
+    const pinBtn = document.getElementById('pinBtn');
+    const subtitleOverlay = document.getElementById('subtitleOverlay');
+    const transcriptBox = document.getElementById('transcriptBox');
+    const exportBox = document.getElementById('exportBox');
+    const importBox = document.getElementById('importBox');
+    const statusEl = document.getElementById('status');
+    const confirmWatchedBtn = document.getElementById('confirmWatchedBtn');
+    const toggleLayoutBtn = document.getElementById('toggleLayoutBtn');
+    const floatingLayoutBtn = document.getElementById('floatingLayoutBtn');
+    const playlistUrlInput = document.getElementById('playlistUrlInput');
+    const autoSyncChk = document.getElementById('autoSyncChk');
+    const playlistMetaInfo = document.getElementById('playlistMetaInfo');
+
+    // --- KÉO THẢ DI ĐỘNG KHUNG PHỤ ĐỀ ---
+    function isVideoFullscreen() {
+      return Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        videoWrapper.classList.contains('pseudo-fs')
+      );
+    }
+
+    function getCurrentPosKey() {
+      if (subLayout === 'vertical') return 'vertical';
+      return isVideoFullscreen() ? 'horizontalFs' : 'horizontal';
+    }
+
+    function persistSubPos() {
+      try {
+        localStorage.setItem(SUB_POS_PREF_KEY, JSON.stringify(customSubPos));
+      } catch {}
+      dbState.custom_sub_pos = customSubPos;
+    }
+
+    let dragState = null;
+    let lastTapTime = 0;
+
+    function resetOverlayInlinePosition() {
+      subtitleOverlay.style.left = '';
+      subtitleOverlay.style.top = '';
+      subtitleOverlay.style.right = '';
+      subtitleOverlay.style.bottom = '';
+      subtitleOverlay.style.transform = '';
+    }
+
+    function applySavedOverlayPosition() {
+      const posKey = getCurrentPosKey();
+      const pos = customSubPos[posKey];
+      if (!pos) {
+        resetOverlayInlinePosition();
+        if (subLayout === 'vertical') {
+          videoWrapper.classList.add('has-vertical-sub');
+        }
+        return;
+      }
+
+      const wrapRect = videoWrapper.getBoundingClientRect();
+      const ovRect = subtitleOverlay.getBoundingClientRect();
+      if (!wrapRect.width || !wrapRect.height) return;
+
+      const maxLeft = Math.max(4, wrapRect.width - ovRect.width - 4);
+      const maxTop = Math.max(4, wrapRect.height - ovRect.height - 4);
+      const clampedLeft = Math.min(maxLeft, Math.max(4, pos.leftRatio * wrapRect.width));
+      const clampedTop = Math.min(maxTop, Math.max(4, pos.topRatio * wrapRect.height));
+
+      subtitleOverlay.style.left = clampedLeft + 'px';
+      subtitleOverlay.style.top = clampedTop + 'px';
+      subtitleOverlay.style.right = 'auto';
+      subtitleOverlay.style.bottom = 'auto';
+      subtitleOverlay.style.transform = 'none';
+
+      if (subLayout === 'vertical') {
+        videoWrapper.classList.remove('has-vertical-sub');
+      }
+    }
+
+    function clampOverlayInBounds() {
+      applySavedOverlayPosition();
+    }
+
+    function getClientPoint(e) {
+      if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+      if (e.changedTouches && e.changedTouches.length > 0) {
+        return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      }
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function startSubDrag(e) {
+      if (subLayout === 'horizontal') {
+        if (!e.target.closest('#subtitleOverlay')) return;
+      } else {
+        if (!e.target.closest('.v-drag-handle')) return;
+      }
+
+      const now = Date.now();
+      if (now - lastTapTime < 300) {
+        lastTapTime = 0;
+        customSubPos[getCurrentPosKey()] = null;
+        persistSubPos();
+        applySavedOverlayPosition();
+        e.preventDefault();
+        return;
+      }
+      lastTapTime = now;
+
+      const pt = getClientPoint(e);
+      const wrapRect = videoWrapper.getBoundingClientRect();
+      const ovRect = subtitleOverlay.getBoundingClientRect();
+
+      dragState = {
+        startX: pt.x,
+        startY: pt.y,
+        origLeft: ovRect.left - wrapRect.left,
+        origTop: ovRect.top - wrapRect.top,
+        moved: false
+      };
+
+      videoWrapper.classList.add('dragging-sub');
+      if (e.cancelable) e.preventDefault();
+    }
+
+    function onSubDragMove(e) {
+      if (!dragState) return;
+      const pt = getClientPoint(e);
+      const dx = pt.x - dragState.startX;
+      const dy = pt.y - dragState.startY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.moved = true;
+
+      const wrapRect = videoWrapper.getBoundingClientRect();
+      const ovRect = subtitleOverlay.getBoundingClientRect();
+      const maxLeft = Math.max(4, wrapRect.width - ovRect.width - 4);
+      const maxTop = Math.max(4, wrapRect.height - ovRect.height - 4);
+
+      const newLeft = Math.min(maxLeft, Math.max(4, dragState.origLeft + dx));
+      const newTop = Math.min(maxTop, Math.max(4, dragState.origTop + dy));
+
+      subtitleOverlay.style.left = newLeft + 'px';
+      subtitleOverlay.style.top = newTop + 'px';
+      subtitleOverlay.style.right = 'auto';
+      subtitleOverlay.style.bottom = 'auto';
+      subtitleOverlay.style.transform = 'none';
+
+      if (subLayout === 'vertical') {
+        videoWrapper.classList.remove('has-vertical-sub');
+      }
+
+      if (wrapRect.width > 0 && wrapRect.height > 0) {
+        customSubPos[getCurrentPosKey()] = {
+          leftRatio: newLeft / wrapRect.width,
+          topRatio: newTop / wrapRect.height
+        };
+      }
+
+      if (e.cancelable) e.preventDefault();
+    }
+
+    function endSubDrag() {
+      if (!dragState) return;
+      const wasMoved = dragState.moved;
+      dragState = null;
+      videoWrapper.classList.remove('dragging-sub');
+      if (wasMoved) persistSubPos();
+    }
+
+    subtitleOverlay.addEventListener('touchstart', startSubDrag, { passive: false });
+    subtitleOverlay.addEventListener('mousedown', startSubDrag);
+    window.addEventListener('touchmove', onSubDragMove, { passive: false });
+    window.addEventListener('mousemove', onSubDragMove);
+    window.addEventListener('touchend', endSubDrag);
+    window.addEventListener('touchcancel', endSubDrag);
+    window.addEventListener('mouseup', endSubDrag);
+    window.addEventListener('resize', clampOverlayInBounds);
+
+    // --- INDEXEDDB & TRẠNG THÁI ---
+    function openIDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveToIDB() {
+      dbState.updated_at = new Date().toISOString();
+      dbState.pinned_id = getPinnedVideoId();
+      dbState.pinned_time = getPinnedVideoTime();
+      dbState.custom_sub_pos = customSubPos;
+      dbState.watched_ids = [...watchedSet];
+      dbState.videos = Object.values(videoMap);
+      const db = await openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(dbState, DB_KEY);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadFromIDB() {
+      const db = await openIDB();
+      return new Promise((resolve) => {
+        const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(DB_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    }
+
+    function hydrateState(raw) {
+      const localPin = localStorage.getItem(PINNED_VIDEO_KEY) || '';
+      const resolvedPin = localPin || raw?.pinned_id || '';
+      if (resolvedPin) localStorage.setItem(PINNED_VIDEO_KEY, resolvedPin);
+
+      const resolvedTime = getPinnedVideoTime() || Number(raw?.pinned_time) || 0;
+      if (resolvedPin && resolvedTime > 0) {
+        localStorage.setItem(PINNED_TIME_KEY, String(resolvedTime));
+      }
+      lastSavedTime = resolvedTime;
+
+      if (raw?.custom_sub_pos && !localStorage.getItem(SUB_POS_PREF_KEY)) {
+        customSubPos = {
+          horizontal: raw.custom_sub_pos.horizontal || null,
+          horizontalFs: raw.custom_sub_pos.horizontalFs || null,
+          vertical: raw.custom_sub_pos.vertical || null
+        };
+        persistSubPos();
+      }
+
+      dbState = {
+        schema: 'yt_playlist_sync_v1',
+        updated_at: raw?.updated_at || '',
+        playlist_url: raw?.playlist_url || '',
+        playlist_id: raw?.playlist_id || '',
+        last_synced_at: raw?.last_synced_at || '',
+        auto_sync: raw?.auto_sync !== undefined ? Boolean(raw.auto_sync) : true,
+        pinned_id: resolvedPin,
+        pinned_time: resolvedTime,
+        custom_sub_pos: customSubPos,
+        watched_ids: Array.isArray(raw?.watched_ids) ? raw.watched_ids : [],
+        videos: []
+      };
+
+      watchedSet = new Set(dbState.watched_ids);
+      videoMap = {};
+
+      const list = Array.isArray(raw?.videos) ? raw.videos : [];
+      list.forEach(item => {
+        if (item && item.id) {
+          videoMap[item.id] = item;
+        }
+      });
+      dbState.videos = Object.values(videoMap);
+
+      playlistUrlInput.value = dbState.playlist_url || dbState.playlist_id || '';
+      autoSyncChk.checked = dbState.auto_sync;
+      updatePlaylistMetaUI();
+    }
+
+    function updatePlaylistMetaUI() {
+      const total = Object.keys(videoMap).length;
+      const subCount = Object.values(videoMap).filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+      if (!dbState.playlist_id && total === 0) {
+        playlistMetaInfo.textContent = 'Chưa có dữ liệu. Hãy chạy GitHub Actions để tạo playlist_data.json hoặc dán link Playlist.';
+        return;
+      }
+      const syncTimeText = dbState.last_synced_at
+        ? new Date(dbState.last_synced_at).toLocaleString('vi-VN')
+        : 'Chưa đồng bộ';
+      playlistMetaInfo.textContent = `Playlist ID: ${dbState.playlist_id || 'Từ GitHub JSON'} | Đồng bộ cuối: ${syncTimeText} | Tổng video: ${total} (Đã lưu phụ đề: ${subCount})`;
+    }
+
+    // --- GHIM VIDEO ĐANG XEM ---
+    function getPinnedVideoId() {
+      return localStorage.getItem(PINNED_VIDEO_KEY) || dbState.pinned_id || '';
+    }
+
+    function getPinnedVideoTime() {
+      const localSec = Number(localStorage.getItem(PINNED_TIME_KEY));
+      if (!Number.isNaN(localSec) && localSec > 0) return localSec;
+      return Number(dbState.pinned_time) || 0;
+    }
+
+    function savePinnedTimeOnly(sec) {
+      const cleanSec = Math.max(0, Math.floor(sec || 0));
+      lastSavedTime = cleanSec;
+      dbState.pinned_time = cleanSec;
+      try {
+        localStorage.setItem(PINNED_TIME_KEY, String(cleanSec));
+      } catch {}
+    }
+
+    async function setPinnedVideoId(id, customSec = null) {
+      if (id) {
+        localStorage.setItem(PINNED_VIDEO_KEY, id);
+        const curSec = customSec !== null
+          ? customSec
+          : (ytPlayer?.getCurrentTime ? ytPlayer.getCurrentTime() : 0);
+        savePinnedTimeOnly(curSec);
+      } else {
+        localStorage.removeItem(PINNED_VIDEO_KEY);
+        localStorage.removeItem(PINNED_TIME_KEY);
+        lastSavedTime = 0;
+        dbState.pinned_time = 0;
+      }
+      dbState.pinned_id = id || '';
+      updatePinButtonUI();
+      if (Object.keys(videoMap).length > 0) {
+        await saveToIDB();
+      }
+    }
+
+    function updatePinButtonUI() {
+      const pinnedId = getPinnedVideoId();
+      if (!currentVideoId) {
+        pinBtn.disabled = true;
+        pinBtn.className = 'btn-unpinned';
+        pinBtn.textContent = '📌 Ghim';
+        return;
+      }
+      pinBtn.disabled = false;
+      if (pinnedId === currentVideoId) {
+        pinBtn.className = 'btn-pinned';
+        pinBtn.textContent = '📌 Đã ghim';
+      } else {
+        pinBtn.className = 'btn-unpinned';
+        pinBtn.textContent = '📌 Ghim';
+      }
+    }
+
+    pinBtn.addEventListener('click', async () => {
+      if (!currentVideoId) return;
+      const pinnedId = getPinnedVideoId();
+      if (pinnedId === currentVideoId) {
+        await setPinnedVideoId('');
+        refreshDropdown(currentVideoId, false);
+        statusEl.textContent = `Đã bỏ ghim video [${currentVideoId}].`;
+      } else {
+        await setPinnedVideoId(currentVideoId);
+        refreshDropdown(currentVideoId, false);
+        statusEl.textContent = `📌 Đã ghim [${currentVideoId}] — mở lại trang sẽ tiếp tục đúng vị trí đang học.`;
+      }
+    });
+
+    // --- TÁCH PLAYLIST ID & GỘP THÔNG MINH TỪ GITHUB JSON ---
+    function extractPlaylistId(input) {
+      const val = (input || '').trim();
+      if (!val) return '';
+      const m = val.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+      if (/^(PL|UU|FL|OLAK5uy_|RD)[a-zA-Z0-9_-]{10,}$/.test(val)) return val;
+      return '';
+    }
+
+    async function mergePythonPlaylistJson(parsed) {
+      if (!parsed || typeof parsed !== 'object' || !parsed.videos || Array.isArray(parsed.videos) || typeof parsed.videos !== 'object') {
+        return null;
+      }
+
+      const plList = parsed.meta?.playlists;
+      if (Array.isArray(plList) && plList.length > 0) {
+        const plId = extractPlaylistId(plList[0]);
+        if (plId && !dbState.playlist_id) {
+          dbState.playlist_id = plId;
+          dbState.playlist_url = plList[0];
+          playlistUrlInput.value = dbState.playlist_url;
+        }
+      }
+
+      let addedCount = 0;
+      let updatedTitleCount = 0;
+      let firstNewId = '';
+      const nowIso = new Date().toISOString();
+
+      Object.values(parsed.videos).forEach(v => {
+        if (!v || !v.id) return;
+        const vid = String(v.id).trim();
+        const cleanTitle = (v.title || '').trim();
+
+        if (!videoMap[vid]) {
+          videoMap[vid] = {
+            id: vid,
+            url: v.youtube_url || `https://www.youtube.com/watch?v=${vid}`,
+            title: cleanTitle || `Video [${vid}]`,
+            added_at: v.added_at || nowIso,
+            raw_transcript: [],
+            transcript: []
+          };
+          if (v.status === 'watched') watchedSet.add(vid);
+          addedCount++;
+          if (!firstNewId) firstNewId = vid;
+        } else if (cleanTitle && (!videoMap[vid].title || videoMap[vid].title === `Video [${vid}]`)) {
+          videoMap[vid].title = cleanTitle;
+          updatedTitleCount++;
+        }
+      });
+
+      dbState.last_synced_at = nowIso;
+      await saveToIDB();
+      updatePlaylistMetaUI();
+
+      return { addedCount, updatedTitleCount, firstNewId };
+    }
+
+    async function syncFromGitHubJson(silent = false) {
+      if (window.location.protocol === 'file:') return false;
+      try {
+        const res = await fetch(`./playlist_data.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return false;
+        const parsed = await res.json();
+        const stats = await mergePythonPlaylistJson(parsed);
+        if (!stats) return false;
+
+        const pinnedId = getPinnedVideoId();
+        const availableIds = getAvailableIds();
+        const shouldReload = !currentVideoId;
+        const targetId = currentVideoId || (pinnedId && availableIds.includes(pinnedId) ? pinnedId : stats.firstNewId);
+        const resumeSec = (!currentVideoId && targetId === pinnedId) ? getPinnedVideoTime() : 0;
+
+        refreshDropdown(targetId, shouldReload, resumeSec);
+
+        const subSavedCount = Object.values(videoMap).filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+        statusEl.textContent =
+          `✓ Đồng bộ từ GitHub: +${stats.addedCount} video mới${stats.updatedTitleCount ? ` (cập nhật ${stats.updatedTitleCount} tiêu đề)` : ''} | Tổng kho: ${Object.keys(videoMap).length} | Còn chưa xem: ${availableIds.length} | Đã lưu phụ đề: ${subSavedCount}.`;
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function ensureYouTubeApiLoaded() {
+      if (window.YT && window.YT.Player) return Promise.resolve();
+      if (ytApiReadyPromise) return ytApiReadyPromise;
+
+      ytApiReadyPromise = new Promise((resolve) => {
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = function () {
+          if (typeof prev === 'function') prev();
+          resolve();
+        };
+        if (!document.getElementById('yt-api-script')) {
+          const tag = document.createElement('script');
+          tag.id = 'yt-api-script';
+          tag.src = 'https://www.youtube.com/iframe_api';
+          document.head.appendChild(tag);
+        }
+      });
+      return ytApiReadyPromise;
+    }
+
+    async function fetchPlaylistRssItems(playlistId) {
+      const feedUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+
+      try {
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) return [];
+        const xmlText = await res.text();
+        const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+        const entries = Array.from(doc.querySelectorAll('entry'));
+        return entries.map(entry => {
+          const idNode = entry.getElementsByTagName('yt:videoId')[0];
+          const titleNode = entry.getElementsByTagName('title')[0];
+          return {
+            id: (idNode?.textContent || '').trim(),
+            title: (titleNode?.textContent || '').trim()
+          };
+        }).filter(x => /^[a-zA-Z0-9_-]{11}$/.test(x.id));
+      } catch {
+        clearTimeout(timer);
+        return [];
+      }
+    }
+
+    async function fetchPlaylistIdsViaIframe(playlistId, onProgress) {
+      await ensureYouTubeApiLoaded();
+
+      return new Promise((resolve) => {
+        const collected = [];
+        const seen = new Set();
+        let finished = false;
+
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(overallTimeout);
+          resolve(collected);
+        };
+
+        const overallTimeout = setTimeout(finish, 45000);
+
+        const waitForBatchChange = (playerInstance, prevSig, timeoutMs = 4000) => {
+          return new Promise((res) => {
+            const started = Date.now();
+            const timer = setInterval(() => {
+              if (finished) {
+                clearInterval(timer);
+                res([]);
+                return;
+              }
+              let list = [];
+              try {
+                list = playerInstance.getPlaylist() || [];
+              } catch {}
+              const sig = list.length ? `${list.length}:${list[0]}:${list[list.length - 1]}` : '';
+              if (sig && sig !== prevSig) {
+                clearInterval(timer);
+                res(list);
+                return;
+              }
+              if (Date.now() - started >= timeoutMs) {
+                clearInterval(timer);
+                res(list);
+              }
+            }, 250);
+          });
+        };
+
+        const runCrawlLoop = async (playerInstance) => {
+          try { playerInstance.mute(); } catch {}
+
+          let prevSig = '';
+          let batch = await waitForBatchChange(playerInstance, '', 5000);
+
+          while (!finished && Array.isArray(batch) && batch.length > 0) {
+            let addedInBatch = 0;
+            batch.forEach(vid => {
+              if (typeof vid === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(vid) && !seen.has(vid)) {
+                seen.add(vid);
+                collected.push(vid);
+                addedInBatch++;
+              }
+            });
+
+            if (typeof onProgress === 'function') {
+              onProgress(collected.length);
+            }
+
+            if (batch.length < 200 || addedInBatch === 0 || collected.length >= 5000) {
+              break;
+            }
+
+            prevSig = `${batch.length}:${batch[0]}:${batch[batch.length - 1]}`;
+            const nextIndex = collected.length - 1;
+
+            try {
+              playerInstance.cuePlaylist({
+                listType: 'playlist',
+                list: playlistId,
+                index: nextIndex
+              });
+            } catch {
+              break;
+            }
+
+            batch = await waitForBatchChange(playerInstance, prevSig, 3500);
+
+            const currentSig = batch.length ? `${batch.length}:${batch[0]}:${batch[batch.length - 1]}` : '';
+            if (currentSig === prevSig) {
+              try {
+                playerInstance.playVideoAt(nextIndex);
+                batch = await waitForBatchChange(playerInstance, prevSig, 3500);
+                playerInstance.pauseVideo();
+              } catch {
+                break;
+              }
+            }
+          }
+
+          finish();
+        };
+
+        if (ytSyncWorker && typeof ytSyncWorker.cuePlaylist === 'function') {
+          try {
+            ytSyncWorker.cuePlaylist({
+              listType: 'playlist',
+              list: playlistId,
+              index: 0
+            });
+            runCrawlLoop(ytSyncWorker);
+          } catch {
+            finish();
+          }
+        } else {
+          ytSyncWorker = new YT.Player('ytSyncWorker', {
+            height: '1',
+            width: '1',
+            playerVars: {
+              listType: 'playlist',
+              list: playlistId,
+              autoplay: 0,
+              controls: 0
+            },
+            events: {
+              onReady: (e) => runCrawlLoop(e.target),
+              onError: () => finish()
+            }
+          });
+        }
+      });
+    }
+
+    async function syncFixedPlaylist(silent = false) {
+      const playlistId = dbState.playlist_id;
+      if (!playlistId) {
+        if (!silent) alert('Chưa có playlist_data.json trên GitHub và cũng chưa dán link Playlist YouTube!');
+        return;
+      }
+      if (isSyncingNow) return;
+      isSyncingNow = true;
+      statusEl.textContent = `🔄 Đang đồng bộ trực tiếp Playlist [${playlistId}]...`;
+
+      try {
+        const [rssItems, iframeIds] = await Promise.all([
+          fetchPlaylistRssItems(playlistId),
+          fetchPlaylistIdsViaIframe(playlistId, (count) => {
+            statusEl.textContent = `🔄 Đang đồng bộ Playlist [${playlistId}]... Đã quét được ${count} video...`;
+          })
+        ]);
+
+        const titleById = {};
+        rssItems.forEach(item => {
+          if (item.id && item.title) titleById[item.id] = item.title;
+        });
+
+        const mergedIds = [];
+        const seen = new Set();
+        iframeIds.forEach(id => {
+          if (!seen.has(id)) { seen.add(id); mergedIds.push(id); }
+        });
+        rssItems.forEach(item => {
+          if (!seen.has(item.id)) { seen.add(item.id); mergedIds.push(item.id); }
+        });
+
+        if (!mergedIds.length) {
+          statusEl.textContent = `⚠️ Không lấy được danh sách video từ Playlist [${playlistId}].`;
+          return;
+        }
+
+        let newCount = 0;
+        let firstNewId = '';
+        const nowIso = new Date().toISOString();
+
+        mergedIds.forEach(id => {
+          if (!videoMap[id]) {
+            videoMap[id] = {
+              id,
+              url: `https://www.youtube.com/watch?v=${id}&list=${playlistId}`,
+              title: titleById[id] || `Video [${id}]`,
+              added_at: nowIso,
+              raw_transcript: [],
+              transcript: []
+            };
+            newCount++;
+            if (!firstNewId) firstNewId = id;
+          } else if (titleById[id] && (!videoMap[id].title || videoMap[id].title === `Video [${id}]`)) {
+            videoMap[id].title = titleById[id];
+          }
+        });
+
+        dbState.last_synced_at = nowIso;
+        await saveToIDB();
+        updatePlaylistMetaUI();
+
+        const pinnedId = getPinnedVideoId();
+        const availableIds = getAvailableIds();
+        const shouldReloadPlayer = !currentVideoId;
+        const targetId = currentVideoId || (pinnedId && availableIds.includes(pinnedId) ? pinnedId : firstNewId);
+        const startSec = (!currentVideoId && targetId === pinnedId) ? getPinnedVideoTime() : 0;
+
+        refreshDropdown(targetId, shouldReloadPlayer, startSec);
+
+        const subSavedCount = Object.values(videoMap).filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+        statusEl.textContent =
+          `✓ Đồng bộ xong: +${newCount} video mới | Tổng kho: ${Object.keys(videoMap).length} | Còn chưa xem: ${availableIds.length} | Đã lưu phụ đề: ${subSavedCount}.`;
+      } finally {
+        isSyncingNow = false;
+      }
+    }
+
+    document.getElementById('saveSyncPlaylistBtn').addEventListener('click', async () => {
+      const rawUrl = playlistUrlInput.value.trim();
+      const plId = extractPlaylistId(rawUrl);
+      if (!plId) {
+        alert('Không tìm thấy mã Playlist (list=PL...) trong đường dẫn vừa dán!');
+        return;
+      }
+      dbState.playlist_id = plId;
+      dbState.playlist_url = rawUrl.includes('http') ? rawUrl : `https://www.youtube.com/playlist?list=${plId}`;
+      dbState.auto_sync = autoSyncChk.checked;
+      await saveToIDB();
+      updatePlaylistMetaUI();
+      document.getElementById('playlistDrawer').open = false;
+      await syncFixedPlaylist(false);
+    });
+
+    document.getElementById('quickSyncBtn').addEventListener('click', async () => {
+      const ok = await syncFromGitHubJson(false);
+      if (!ok) {
+        await syncFixedPlaylist(false);
+      }
+    });
+
+    autoSyncChk.addEventListener('change', async () => {
+      dbState.auto_sync = autoSyncChk.checked;
+      await saveToIDB();
+    });
+
+    // --- PHÂN TÍCH CÁC ĐỊNH DẠNG BẢN CHÉP LỜI & KARAOKE TỪNG CÂU ---
+    function formatClockTime(sec) {
+      const total = Math.max(0, Math.floor(sec));
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function parseRawPastedTranscript(rawText) {
+      const text = (rawText || '').replace(/\r/g, '').trim();
+      if (!text) return [];
+
+      if (text.startsWith('[')) {
+        try {
+          const arr = JSON.parse(text);
+          if (Array.isArray(arr)) {
+            return arr.map(it => ({
+              time: it.time || formatClockTime(Number(it.start) || 0),
+              start: Number(it.start) || 0,
+              end: Number(it.end) || (Number(it.start) || 0) + 3,
+              speaker: (it.speaker || '').trim(),
+              fr: (it.fr || it.text || '').trim(),
+              vi: (it.vi || '').trim()
+            })).filter(x => x.fr);
+          }
+        } catch {}
+      }
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      if (lines.length && /^\d+(\.\d+)?\|\d+(\.\d+)?\|/.test(lines[0])) {
+        return lines.map(line => {
+          const parts = line.split('|');
+          const start = Number(parts[0]) || 0;
+          const end = Number(parts[1]) || (start + 2.5);
+          const fr = parts.slice(2).join('|').trim();
+          return { time: formatClockTime(start), start, end, fr, vi: '' };
+        }).filter(x => x.fr);
+      }
+
+      const srtTimeRe = /^(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})/;
+      if (lines.some(l => srtTimeRe.test(l))) {
+        const result = [];
+        let cur = null;
+        for (const line of lines) {
+          const m = line.match(srtTimeRe);
+          if (m) {
+            if (cur && cur.fr) result.push(cur);
+            const start = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4]) / 1000;
+            const end = Number(m[5]) * 3600 + Number(m[6]) * 60 + Number(m[7]) + Number(m[8]) / 1000;
+            cur = { time: formatClockTime(start), start: Number(start.toFixed(2)), end: Number(end.toFixed(2)), fr: '', vi: '' };
+          } else if (cur && !/^\d+$/.test(line)) {
+            const clean = line.replace(/<[^>]+>/g, '').trim();
+            cur.fr = cur.fr ? `${cur.fr} ${clean}` : clean;
+          }
+        }
+        if (cur && cur.fr) result.push(cur);
+        return result;
+      }
+
+      const ytTimeRe = /^[-•*\s[\](]*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[\])\-\s]*(.*)$/;
+      const entries = [];
+      let currentEntry = null;
+
+      for (const line of lines) {
+        const m = line.match(ytTimeRe);
+        if (m) {
+          if (currentEntry) entries.push(currentEntry);
+          const h = m[1] ? Number(m[1]) : 0;
+          const min = Number(m[2]);
+          const sec = Number(m[3]);
+          const start = h * 3600 + min * 60 + sec;
+          currentEntry = {
+            time: formatClockTime(start),
+            start,
+            end: start + 4,
+            fr: (m[4] || '').trim(),
+            vi: ''
+          };
+        } else if (currentEntry) {
+          currentEntry.fr = currentEntry.fr ? `${currentEntry.fr} ${line}` : line;
+        }
+      }
+      if (currentEntry) entries.push(currentEntry);
+
+      for (let i = 0; i < entries.length; i++) {
+        if (i < entries.length - 1 && entries[i + 1].start > entries[i].start) {
+          entries[i].end = entries[i + 1].start;
+        } else {
+          entries[i].end = entries[i].start + Math.max(3, Math.ceil(entries[i].fr.length / 14));
+        }
+      }
+      return entries.filter(x => x.fr);
+    }
+
+    const SENT_ABBREV_RE = /^(?:M|Mr|Mme|Mlle|Dr|Prof|St|Ste|Mgr|Me|etc|cf|ex|vol|p|pp|fig|chap|art|al|av|bd|env|max|min|tel|tél|n°|TP|ThS|TS|BS|PGS|GS|vd|tr)\.$/i;
+
+    function isSentenceTerminator(word, nextWord) {
+      const stripped = word.replace(/[»"”')\]}]+$/g, '');
+      if (!/[.!?…]$/.test(stripped)) return false;
+      if (stripped.endsWith('...')) {
+        if (nextWord && /^[a-zà-ÿ]/.test(nextWord.replace(/^[«"“'(\[{]+/, ''))) return false;
+        return true;
+      }
+      if (SENT_ABBREV_RE.test(stripped)) return false;
+      if (/^[A-ZÀ-Ý]\.$/.test(stripped) && nextWord && /^[A-ZÀ-Ý]/.test(nextWord)) return false;
+      return true;
+    }
+
+    function splitTextIntoSentences(fullText) {
+      const clean = (fullText || '').trim();
+      if (!clean) return [];
+      const tokens = clean.split(/\s+/).filter(Boolean);
+      if (tokens.length <= 1) return [clean];
+
+      const sentences = [];
+      let bucket = [];
+      for (let i = 0; i < tokens.length; i++) {
+        bucket.push(tokens[i]);
+        const nextTok = i + 1 < tokens.length ? tokens[i + 1] : '';
+        if (isSentenceTerminator(tokens[i], nextTok)) {
+          sentences.push(bucket.join(' '));
+          bucket = [];
+        }
+      }
+      if (bucket.length) sentences.push(bucket.join(' '));
+      return sentences.length ? sentences : [clean];
+    }
+
+    function findNearestWordBoundary(text, targetPos, minPos) {
+      if (targetPos <= minPos) return minPos;
+      if (targetPos >= text.length) return text.length;
+      if (text[targetPos] === ' ') return targetPos;
+
+      for (let offset = 1; offset <= 18; offset++) {
+        const right = targetPos + offset;
+        if (right < text.length && text[right] === ' ') return right;
+        const left = targetPos - offset;
+        if (left > minPos && text[left] === ' ') return left;
+      }
+      return targetPos;
+    }
+
+    function splitTextIntoExactParts(fullText, weights) {
+      const cleanText = (fullText || '').trim();
+      const count = Array.isArray(weights) ? weights.length : 0;
+      if (count <= 0) return [];
+      if (!cleanText) return new Array(count).fill('');
+      if (count === 1) return [cleanText];
+
+      const totalWeight = weights.reduce((sum, w) => sum + Math.max(1, w || 1), 0);
+      const parts = [];
+      let cursor = 0;
+      let cumWeight = 0;
+
+      for (let k = 0; k < count; k++) {
+        if (k === count - 1) {
+          parts.push(cleanText.slice(cursor).trim());
+        } else {
+          cumWeight += Math.max(1, weights[k] || 1);
+          const approxPos = Math.round((cumWeight / totalWeight) * cleanText.length);
+          const splitPos = findNearestWordBoundary(cleanText, approxPos, cursor);
+          parts.push(cleanText.slice(cursor, splitPos).trim());
+          cursor = splitPos;
+          while (cursor < cleanText.length && cleanText[cursor] === ' ') cursor++;
+        }
+      }
+      return parts;
+    }
+
+    function mapVietnameseToSentenceCount(cleanVi, frSentences) {
+      const targetCount = frSentences.length;
+      if (!cleanVi) return new Array(targetCount).fill('');
+      if (targetCount <= 1) return [cleanVi];
+
+      const viSentences = splitTextIntoSentences(cleanVi);
+      if (viSentences.length === targetCount) return viSentences;
+
+      if (viSentences.length > targetCount) {
+        const totalViLen = viSentences.reduce((s, v) => s + Math.max(1, v.length), 0);
+        const totalFrLen = frSentences.reduce((s, f) => s + Math.max(1, f.length), 0);
+        const buckets = [];
+        let vIdx = 0;
+        let cumFr = 0;
+        let cumVi = 0;
+
+        for (let k = 0; k < targetCount; k++) {
+          if (k === targetCount - 1) {
+            buckets.push(viSentences.slice(vIdx).join(' '));
+            break;
+          }
+          cumFr += Math.max(1, frSentences[k].length);
+          const targetViRatio = cumFr / totalFrLen;
+          const group = [];
+          while (vIdx < viSentences.length - (targetCount - 1 - k)) {
+            group.push(viSentences[vIdx]);
+            cumVi += Math.max(1, viSentences[vIdx].length);
+            vIdx++;
+            if (cumVi / totalViLen >= targetViRatio - 0.04) break;
+          }
+          buckets.push(group.join(' '));
+        }
+        return buckets;
+      }
+
+      const viWeights = frSentences.map(s => Math.max(1, s.length));
+      return splitTextIntoExactParts(cleanVi, viWeights);
+    }
+
+    function mapSubRangesToSentences(frSentences, subRanges, blockStart, blockEnd) {
+      const n = frSentences.length;
+      if (n <= 1 || !Array.isArray(subRanges) || subRanges.length === 0) {
+        return [{ start: blockStart, end: blockEnd, text: frSentences[0] || '' }];
+      }
+
+      const m = subRanges.length;
+      const totalFrLen = frSentences.reduce((s, f) => s + Math.max(1, f.length), 0);
+      const totalSubWeight = subRanges.reduce((s, r) => s + Math.max(1, r.weight || 1), 0);
+
+      const cumSubRatios = [];
+      let runW = 0;
+      for (let j = 0; j < m; j++) {
+        runW += Math.max(1, subRanges[j].weight || 1);
+        cumSubRatios.push(runW / totalSubWeight);
+      }
+
+      const result = [];
+      let rStart = 0;
+      let cumFrLen = 0;
+
+      for (let k = 0; k < n; k++) {
+        if (k === n - 1) {
+          const sTime = rStart < m ? subRanges[rStart].start : blockStart;
+          result.push({
+            start: Number(sTime.toFixed(2)),
+            end: Number(blockEnd.toFixed(2)),
+            text: frSentences[k]
+          });
+          break;
+        }
+
+        cumFrLen += Math.max(1, frSentences[k].length);
+        const targetRatio = cumFrLen / totalFrLen;
+        const maxAllowedEnd = m - 1 - (n - 1 - k);
+
+        let bestIdx = rStart;
+        let bestDiff = Infinity;
+        for (let j = rStart; j <= maxAllowedEnd; j++) {
+          let diff = Math.abs(cumSubRatios[j] - targetRatio);
+          const tok = (subRanges[j].text || '').replace(/[»"”')\]}]+$/g, '');
+          if (/[.!?…]$/.test(tok)) diff -= 0.08;
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = j;
+          }
+        }
+
+        result.push({
+          start: Number(subRanges[rStart].start.toFixed(2)),
+          end: Number(subRanges[bestIdx].end.toFixed(2)),
+          text: frSentences[k]
+        });
+        rStart = bestIdx + 1;
+      }
+
+      for (let k = 0; k < result.length - 1; k++) {
+        const gap = result[k + 1].start - result[k].end;
+        if (gap >= 0 && gap < 0.65) result[k].end = result[k + 1].start;
+      }
+
+      return result;
+    }
+
+    function buildKaraokeSubs(frText, viText, subRanges, blockStart, blockEnd) {
+      const cleanFr = (frText || '').trim();
+      const cleanVi = (viText || '').trim();
+      if (!cleanFr && !cleanVi) return [];
+
+      const frSentences = splitTextIntoSentences(cleanFr);
+      if (frSentences.length <= 1) {
+        return [{ start: blockStart, end: blockEnd, text: cleanFr, vi: cleanVi }];
+      }
+
+      const timedFr = mapSubRangesToSentences(frSentences, subRanges, blockStart, blockEnd);
+      const viParts = mapVietnameseToSentenceCount(cleanVi, frSentences);
+
+      return timedFr.map((seg, idx) => ({
+        start: seg.start,
+        end: seg.end,
+        text: seg.text,
+        vi: viParts[idx] || ''
+      }));
+    }
+
+    function ensureTranscriptKaraoke(item) {
+      const tr = item.transcript || [];
+      const raw = item.raw_transcript || [];
+      tr.forEach(block => {
+        const fr = (block.fr || block.text || '').trim();
+        const vi = (block.vi || '').trim();
+        const frSentences = splitTextIntoSentences(fr);
+
+        if (!fr && !vi) { block.subs = []; return; }
+
+        if (Array.isArray(block.subs) && block.subs.length > 0) {
+          if (frSentences.length > 1 && block.subs.length > frSentences.length) {
+            const subRanges = block.subs.map(s => ({
+              start: Number(s.start) || block.start,
+              end: Number(s.end) || block.end,
+              weight: (s.text || '').length || 1,
+              text: s.text || ''
+            }));
+            block.subs = buildKaraokeSubs(fr, vi, subRanges, block.start, block.end);
+            return;
+          }
+          const needsViSplit = vi && block.subs.every(s => s.vi === undefined);
+          if (needsViSplit) {
+            const viParts = mapVietnameseToSentenceCount(vi, frSentences.length ? frSentences : [fr]);
+            block.subs.forEach((s, idx) => { s.vi = viParts[idx] || ''; });
+          }
+          return;
+        }
+
+        if (raw.length > 0) {
+          const matched = raw.filter(r => {
+            const mid = (r.start + r.end) / 2;
+            return mid >= block.start - 0.05 && mid <= block.end + 0.05;
+          });
+          if (matched.length > 1) {
+            const subRanges = matched.map((r, idx) => {
+              const s = idx === 0 ? Math.max(block.start, r.start) : r.start;
+              const e = idx === matched.length - 1 ? Math.min(block.end, r.end) : r.end;
+              const origDur = Math.max(0.1, r.end - r.start);
+              const ratio = Math.max(0.2, Math.min(1, (e - s) / origDur));
+              const rText = (r.fr || r.text || '').trim();
+              return { start: s, end: e, weight: (rText.length || 1) * ratio, text: rText };
+            });
+            block.subs = buildKaraokeSubs(fr, vi, subRanges, block.start, block.end);
+            return;
+          }
+        }
+        block.subs = buildKaraokeSubs(fr, vi, [], block.start, block.end);
+      });
+    }
+
+    function renderKaraokeFrHtml(item, scopeAttr = '') {
+      const fr = item.fr || item.text || '';
+      if (!fr) return '';
+      const subs = (Array.isArray(item.subs) && item.subs.length)
+        ? item.subs
+        : [{ start: item.start, end: item.end, text: fr }];
+
+      return subs.map((seg, k) => {
+        const segText = seg.text !== undefined ? seg.text : (k === 0 ? fr : '');
+        if (!segText) return '';
+        return `<span class="k-seg" ${scopeAttr} data-k="${k}" data-start="${seg.start}">${escapeHtml(segText)}</span>`;
+      }).filter(Boolean).join(' ');
+    }
+
+    function renderKaraokeViHtml(item, scopeAttr = '') {
+      const vi = item.vi || '';
+      if (!vi) return '';
+      const subs = (Array.isArray(item.subs) && item.subs.length)
+        ? item.subs
+        : [{ start: item.start, end: item.end, vi }];
+
+      return subs.map((seg, k) => {
+        const segVi = seg.vi !== undefined ? seg.vi : (k === 0 ? vi : '');
+        if (!segVi) return '';
+        return `<span class="k-seg" ${scopeAttr} data-k="${k}" data-start="${seg.start}">${escapeHtml(segVi)}</span>`;
+      }).filter(Boolean).join(' ');
+    }
+
+    // --- NẠP BẢN CHÉP LỜI THÔ CHO VIDEO ĐANG CHỌN ---
+    document.getElementById('applyRawSubBtn').addEventListener('click', async () => {
+      if (!currentVideoId || !videoMap[currentVideoId]) {
+        alert('Chưa có video nào được chọn! Hãy đồng bộ Playlist hoặc bấm Random trước.');
+        return;
+      }
+      const rawSubVal = document.getElementById('rawTranscriptInput').value.trim();
+      if (!rawSubVal) {
+        alert('Hãy dán nội dung bản chép lời vào ô phía trên!');
+        return;
+      }
+      const parsed = parseRawPastedTranscript(rawSubVal);
+      if (!parsed.length) {
+        alert('Không nhận diện được mốc thời gian trong bản chép lời. Hãy kiểm tra lại định dạng!');
+        return;
+      }
+
+      const item = videoMap[currentVideoId];
+      item.raw_transcript = JSON.parse(JSON.stringify(parsed));
+      item.transcript = JSON.parse(JSON.stringify(parsed));
+      ensureTranscriptKaraoke(item);
+
+      await saveToIDB();
+      updatePlaylistMetaUI();
+      document.getElementById('rawTranscriptInput').value = '';
+      document.getElementById('rawSubDrawer').open = false;
+
+      refreshDropdown(currentVideoId, false);
+      currentTranscript = item.transcript;
+      activeIndex = -1;
+      activeSubIndex = -1;
+      renderOverlayStructure();
+      applySavedOverlayPosition();
+      renderTranscriptList();
+      populateExportBox(item);
+      syncSubtitle(true);
+
+      statusEl.textContent = `✓ Đã gắn ${parsed.length} dòng phụ đề thô cho [${currentVideoId}]. Bấm "📋 Copy trọn bộ" để gửi AI dịch song ngữ.`;
+    });
+
+    document.getElementById('clearRawInputBtn').addEventListener('click', () => {
+      document.getElementById('rawTranscriptInput').value = '';
+    });
+
+    // --- CHUYỂN ĐỔI KIỂU PHỤ ĐỀ NGANG <-> DỌC ---
+    function applyLayoutMode() {
+      const isVert = subLayout === 'vertical';
+      subtitleOverlay.className = isVert
+        ? 'subtitle-overlay mode-vertical'
+        : 'subtitle-overlay mode-horizontal';
+      videoWrapper.classList.toggle('has-vertical-sub', isVert && !customSubPos.vertical);
+
+      toggleLayoutBtn.textContent = isVert ? '📐 Kiểu PĐ: Dọc' : '📐 Kiểu PĐ: Ngang';
+      floatingLayoutBtn.textContent = isVert ? '📐 PĐ: Dọc' : '📐 PĐ: Ngang';
+
+      renderOverlayStructure();
+      applySavedOverlayPosition();
+      activeIndex = -1;
+      activeSubIndex = -1;
+      syncSubtitle(true);
+    }
+
+    function toggleLayoutMode() {
+      subLayout = subLayout === 'horizontal' ? 'vertical' : 'horizontal';
+      localStorage.setItem(LAYOUT_PREF_KEY, subLayout);
+      applyLayoutMode();
+    }
+
+    toggleLayoutBtn.addEventListener('click', toggleLayoutMode);
+    floatingLayoutBtn.addEventListener('click', toggleLayoutMode);
+
+    function renderOverlayStructure() {
+      if (subLayout === 'horizontal') {
+        subtitleOverlay.innerHTML = '<div id="subtitleBox" class="subtitle-box"></div>';
+        return;
+      }
+
+      subtitleOverlay.innerHTML = '';
+      if (!currentTranscript.length) return;
+
+      const handle = document.createElement('div');
+      handle.className = 'v-drag-handle';
+      handle.title = 'Kéo để di chuyển khung phụ đề (chạm đúp để về góc mặc định)';
+      handle.textContent = '⋮⋮ Kéo vị trí';
+      subtitleOverlay.appendChild(handle);
+
+      const listContainer = document.createElement('div');
+      listContainer.className = 'v-sub-list';
+      listContainer.id = 'vSubList';
+
+      currentTranscript.forEach((item, idx) => {
+        const fr = item.fr || item.text || '';
+        const vi = item.vi || '';
+        const row = document.createElement('div');
+        row.className = 'v-sub-item';
+        row.id = 'vsub-' + idx;
+
+        let inner = `<span class="v-time">${escapeHtml(item.time || item.start.toFixed(0) + 's')}</span>`;
+        if (item.speaker) inner += `<div class="v-speaker">${escapeHtml(item.speaker)}</div>`;
+        if (showFr && fr) inner += `<div class="v-fr">${renderKaraokeFrHtml(item, `data-v-idx="${idx}"`)}</div>`;
+        if (showVi && vi) inner += `<div class="v-vi">${renderKaraokeViHtml(item, `data-v-idx="${idx}"`)}</div>`;
+
+        row.innerHTML = inner;
+        row.onclick = (e) => {
+          e.stopPropagation();
+          const kSpan = e.target.closest('.k-seg');
+          const targetTime = kSpan ? Number(kSpan.dataset.start) : item.start;
+          seekTo(targetTime);
+        };
+        listContainer.appendChild(row);
+      });
+
+      subtitleOverlay.appendChild(listContainer);
+    }
+
+    // --- BẬT / TẮT NGÔN NGỮ & TOÀN MÀN HÌNH ---
+    const toggleFrBtn = document.getElementById('toggleFrBtn');
+    const toggleViBtn = document.getElementById('toggleViBtn');
+
+    toggleFrBtn.addEventListener('click', () => {
+      showFr = !showFr;
+      toggleFrBtn.textContent = `🇫🇷 Pháp: ${showFr ? 'BẬT' : 'TẮT'}`;
+      toggleFrBtn.className = showFr ? 'btn-blue' : 'btn-off';
+      if (subLayout === 'vertical') renderOverlayStructure();
+      activeIndex = -1;
+      activeSubIndex = -1;
+      syncSubtitle(true);
+    });
+
+    toggleViBtn.addEventListener('click', () => {
+      showVi = !showVi;
+      toggleViBtn.textContent = `🇻🇳 Việt: ${showVi ? 'BẬT' : 'TẮT'}`;
+      toggleViBtn.className = showVi ? 'btn-blue' : 'btn-off';
+      if (subLayout === 'vertical') renderOverlayStructure();
+      activeIndex = -1;
+      activeSubIndex = -1;
+      syncSubtitle(true);
+    });
+
+    function toggleFullscreen() {
+      const nativeFs = document.fullscreenElement || document.webkitFullscreenElement;
+      if (nativeFs) {
+        (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+        videoWrapper.classList.remove('pseudo-fs');
+        requestAnimationFrame(clampOverlayInBounds);
+        return;
+      }
+      if (videoWrapper.classList.contains('pseudo-fs')) {
+        videoWrapper.classList.remove('pseudo-fs');
+        requestAnimationFrame(clampOverlayInBounds);
+        return;
+      }
+
+      const reqFs = videoWrapper.requestFullscreen || videoWrapper.webkitRequestFullscreen;
+      if (reqFs) {
+        try {
+          const p = reqFs.call(videoWrapper);
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+              videoWrapper.classList.add('pseudo-fs');
+              requestAnimationFrame(clampOverlayInBounds);
+            });
+          }
+        } catch {
+          videoWrapper.classList.add('pseudo-fs');
+        }
+      } else {
+        videoWrapper.classList.add('pseudo-fs');
+      }
+      requestAnimationFrame(clampOverlayInBounds);
+    }
+    document.getElementById('toggleFsBtn').addEventListener('click', toggleFullscreen);
+    document.getElementById('floatingFsBtn').addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', () => requestAnimationFrame(clampOverlayInBounds));
+    document.addEventListener('webkitfullscreenchange', () => requestAnimationFrame(clampOverlayInBounds));
+
+    // --- RANDOM, XÁC NHẬN ĐÃ XEM & RESET GIỮ NGUYÊN PHỤ ĐỀ ---
+    function getAvailableIds() {
+      return Object.keys(videoMap).filter(id => !watchedSet.has(id));
+    }
+
+    document.getElementById('randomBtn').addEventListener('click', () => {
+      const available = getAvailableIds();
+      if (!available.length) {
+        alert('Không còn video chưa xem nào! Nếu muốn học lại từ đầu (vẫn giữ nguyên phụ đề), hãy mở mục 💾 Kho sao lưu và bấm "Xem lại từ đầu".');
+        return;
+      }
+      let candidates = available.filter(id => id !== currentVideoId);
+      if (!candidates.length) candidates = available;
+
+      const randomId = candidates[Math.floor(Math.random() * candidates.length)];
+      videoSelect.value = randomId;
+      loadSelectedVideo(randomId, 0);
+
+      const hasSub = (videoMap[randomId]?.transcript || []).length > 0;
+      statusEl.textContent = `🎲 Random: [${randomId}] (Còn ${available.length} video chưa xem)${hasSub ? ' — Đã có sẵn phụ đề!' : ' — Chưa có phụ đề, mở mục 📝 để dán bản chép lời.'}`;
+    });
+
+    confirmWatchedBtn.addEventListener('click', async () => {
+      if (!currentVideoId) return;
+      const doneId = currentVideoId;
+      watchedSet.add(doneId);
+
+      if (getPinnedVideoId() === doneId) {
+        localStorage.removeItem(PINNED_VIDEO_KEY);
+        localStorage.removeItem(PINNED_TIME_KEY);
+        dbState.pinned_id = '';
+        dbState.pinned_time = 0;
+        lastSavedTime = 0;
+      }
+
+      await saveToIDB();
+      refreshDropdown('', true, 0);
+      statusEl.textContent = `✓ Đã loại [${doneId}] khỏi mục Random (Phụ đề đã tạo vẫn được lưu an toàn trong kho). Còn lại: ${getAvailableIds().length} video.`;
+    });
+
+    document.getElementById('resetWatchedBtn').addEventListener('click', async () => {
+      const total = Object.keys(videoMap).length;
+      if (!total) return;
+      if (!confirm(`Đưa toàn bộ ${total} video quay lại danh sách Random để xem lại từ đầu? (Toàn bộ phụ đề song ngữ đã tạo vẫn được giữ nguyên)`)) return;
+
+      watchedSet.clear();
+      await saveToIDB();
+      refreshDropdown(currentVideoId || '', true, 0);
+      const subSavedCount = Object.values(videoMap).filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+      statusEl.textContent = `↺ Đã reset tiến độ xem: Toàn bộ ${total} video đã quay lại mục Random (Bảo toàn ${subSavedCount} bộ phụ đề đã lưu).`;
+    });
+
+    // --- XUẤT & NHẬP JSON THỦ CÔNG ---
+    document.getElementById('exportBackupBtn').addEventListener('click', async () => {
+      await saveToIDB();
+      const blob = new Blob([JSON.stringify(dbState, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sao_luu_playlist_${dbState.playlist_id || 'song_ngu'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      statusEl.textContent = '📤 Đã xuất file JSON sao lưu (bao gồm danh sách phát, tiến độ xem và toàn bộ phụ đề đã tạo).';
+    });
+
+    document.getElementById('importBackupInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+
+          const stats = await mergePythonPlaylistJson(parsed);
+          if (stats) {
+            document.getElementById('backupDrawer').open = false;
+            const pinnedId = getPinnedVideoId();
+            const availableIds = getAvailableIds();
+            const shouldReload = !currentVideoId;
+            const targetId = currentVideoId || (pinnedId && availableIds.includes(pinnedId) ? pinnedId : stats.firstNewId);
+            const resumeSec = (!currentVideoId && targetId === pinnedId) ? getPinnedVideoTime() : 0;
+
+            refreshDropdown(targetId, shouldReload, resumeSec);
+
+            const subSavedCount = Object.values(videoMap).filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+            statusEl.textContent =
+              `✓ Đã tích hợp JSON: +${stats.addedCount} video mới | Tổng kho: ${Object.keys(videoMap).length} | Còn chưa xem: ${availableIds.length} | Bảo toàn: ${subSavedCount} bộ phụ đề.`;
+            e.target.value = '';
+            return;
+          }
+
+          if (parsed && (parsed.schema === 'yt_playlist_sync_v1' || Array.isArray(parsed.videos))) {
+            hydrateState(parsed);
+            await saveToIDB();
+            document.getElementById('backupDrawer').open = false;
+            const pinnedId = getPinnedVideoId();
+            const availableIds = getAvailableIds();
+            const resumeSec = (pinnedId && availableIds.includes(pinnedId)) ? getPinnedVideoTime() : 0;
+            refreshDropdown(pinnedId, true, resumeSec);
+            const subSavedCount = dbState.videos.filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+            statusEl.textContent = `✓ Đã khôi phục ${dbState.videos.length} video từ file sao lưu (Còn chưa xem: ${availableIds.length} | Đã lưu phụ đề: ${subSavedCount}).`;
+            e.target.value = '';
+            return;
+          }
+
+          throw new Error('File JSON không đúng định dạng playlist_data.json hoặc file sao lưu của web.');
+        } catch (err) {
+          alert('Lỗi đọc file JSON: ' + err.message);
+          e.target.value = '';
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('wipeNewDbBtn').addEventListener('click', async () => {
+      if (!confirm('Xóa sạch toàn bộ dữ liệu trong kho Playlist này?')) return;
+      await setPinnedVideoId('');
+      hydrateState({});
+      await saveToIDB();
+      refreshDropdown('', true, 0);
+      statusEl.textContent = 'Đã xóa sạch dữ liệu trong kho Playlist.';
+    });
+
+    function refreshDropdown(keepId = '', reloadPlayer = true, startSec = 0) {
+      const availableIds = getAvailableIds();
+      const pinnedId = getPinnedVideoId();
+      videoSelect.innerHTML = '';
+
+      if (!availableIds.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = Object.keys(videoMap).length > 0
+          ? '-- Đã xem hết toàn bộ video! (Mở 💾 Kho sao lưu để Reset xem lại) --'
+          : '-- Chưa có video (Hãy chạy GitHub Actions hoặc dán link Playlist ở mục 🔗) --';
+        videoSelect.appendChild(opt);
+        currentVideoId = '';
+        currentTranscript = [];
+        updatePinButtonUI();
+        renderOverlayStructure();
+        transcriptBox.innerHTML = '';
+        exportBox.value = '';
+        confirmWatchedBtn.disabled = true;
+        return;
+      }
+
+      confirmWatchedBtn.disabled = false;
+
+      availableIds.forEach(id => {
+        const info = videoMap[id];
+        const tr = info.transcript || [];
+        const hasVi = tr.some(line => line.vi && line.vi.trim() !== '');
+        const tag = hasVi ? '★ Song ngữ' : (tr.length ? '✓ Pháp' : '○ Chưa có PĐ');
+        const pinPrefix = (id === pinnedId) ? '📌 ' : '';
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${pinPrefix}[${id}] ${info.title || 'Đang tải tên...'} (${tag})`;
+        videoSelect.appendChild(opt);
+      });
+
+      if (keepId && availableIds.includes(keepId)) videoSelect.value = keepId;
+      if (reloadPlayer) {
+        loadSelectedVideo(videoSelect.value, startSec);
+      } else {
+        updatePinButtonUI();
+      }
+    }
+
+    videoSelect.addEventListener('change', () => loadSelectedVideo(videoSelect.value, 0));
+
+    function loadSelectedVideo(id, startSec = 0) {
+      if (!id || !videoMap[id]) return;
+      currentVideoId = id;
+      updatePinButtonUI();
+      const item = videoMap[id];
+      ensureTranscriptKaraoke(item);
+      currentTranscript = item.transcript || [];
+      activeIndex = -1;
+      activeSubIndex = -1;
+      importBox.value = '';
+
+      renderOverlayStructure();
+      applySavedOverlayPosition();
+      renderTranscriptList();
+      populateExportBox(item);
+      playYouTubeVideo(id, startSec);
+    }
+
+    // --- TẠO PROMPT AI & LƯU PHỤ ĐỀ DỊCH VÀO KHO ---
+    function populateExportBox(item) {
+      const url = `https://www.youtube.com/watch?v=${item.id}`;
+      const sourceLines = item.raw_transcript || item.transcript || [];
+      if (!sourceLines.length) {
+        exportBox.value = '';
+        return;
+      }
+      const compactLines = sourceLines.map((line, idx) => ({
+        i: idx,
+        fr: (line.fr || line.text || '').trim()
+      }));
+
+      exportBox.value =
+        `${AI_PROMPT}\n` +
+        `Link video: ${url}\n` +
+        `Tiêu đề: ${item.title || ''}\n` +
+        JSON.stringify(compactLines);
+    }
+
+    document.getElementById('copyRawBtn').addEventListener('click', async () => {
+      if (!exportBox.value) return;
+      try {
+        await navigator.clipboard.writeText(exportBox.value);
+      } catch {
+        exportBox.select();
+        exportBox.setSelectionRange(0, exportBox.value.length);
+        document.execCommand('copy');
+      }
+      const btn = document.getElementById('copyRawBtn');
+      btn.textContent = '✓ Đã copy!';
+      setTimeout(() => btn.textContent = '📋 Copy trọn bộ', 1800);
+    });
+
+    document.getElementById('downloadTxtBtn').addEventListener('click', () => {
+      if (!exportBox.value) {
+        alert('Chưa có dữ liệu phụ đề để tải xuống!');
+        return;
+      }
+      const blob = new Blob([exportBox.value], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `prompt_phu_de_${currentVideoId || 'youtube'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      const btn = document.getElementById('downloadTxtBtn');
+      btn.textContent = '✓ Đã tải!';
+      setTimeout(() => btn.textContent = '📥 Tải file .txt', 1800);
+    });
+
+    document.getElementById('saveSubBtn').addEventListener('click', async () => {
+      if (!currentVideoId || !videoMap[currentVideoId]) {
+        alert('Chưa có video nào được chọn!');
+        return;
+      }
+      let rawText = importBox.value.trim();
+      if (!rawText) {
+        alert('Hãy dán mảng JSON từ AI vào ô bên dưới trước khi bấm Lưu!');
+        return;
+      }
+      rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (err) {
+        alert('Dữ liệu dán vào chưa đúng chuẩn JSON:\n' + err.message);
+        return;
+      }
+      if (!Array.isArray(parsed) || !parsed.length) {
+        alert('Dữ liệu JSON phải là một danh sách [...] các đoạn phụ đề.');
+        return;
+      }
+
+      if (!videoMap[currentVideoId].raw_transcript && currentTranscript.length) {
+        videoMap[currentVideoId].raw_transcript = JSON.parse(JSON.stringify(currentTranscript));
+      }
+      const baseTranscript = videoMap[currentVideoId].raw_transcript || [];
+
+      if (!baseTranscript.length && typeof parsed[0].start !== 'number') {
+        alert('Video này chưa có phụ đề gốc kèm mốc thời gian. Hãy dán bản chép lời thô ở mục 📝 trước!');
+        return;
+      }
+
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          await navigator.storage.persist();
+        }
+
+        if (typeof parsed[0].from_i === 'number' && baseTranscript.length) {
+          const maxIdx = baseTranscript.length - 1;
+          const blocks = parsed.map((row, bIdx) => {
+            const fIdx = Math.max(0, Math.min(maxIdx, row.from_i));
+            const tIdx = Math.max(fIdx, Math.min(maxIdx, typeof row.to_i === 'number' ? row.to_i : fIdx));
+            const firstLine = baseTranscript[fIdx];
+            const lastLine = baseTranscript[tIdx];
+
+            let start = firstLine.start;
+            let end = lastLine.end;
+            const splitAtStart = bIdx > 0 && parsed[bIdx - 1].to_i === fIdx;
+            const splitAtEnd = bIdx < parsed.length - 1 && parsed[bIdx + 1].from_i === tIdx;
+
+            if (splitAtStart) start = (firstLine.start + firstLine.end) / 2;
+            if (splitAtEnd) end = (lastLine.start + lastLine.end) / 2;
+
+            const subRanges = [];
+            for (let k = fIdx; k <= tIdx; k++) {
+              const origLine = baseTranscript[k];
+              let s = origLine.start;
+              let e = origLine.end;
+              const origText = (origLine.fr || origLine.text || '').trim();
+              let weight = origText.length || 1;
+
+              if (k === fIdx && splitAtStart) { s = start; weight *= 0.5; }
+              if (k === tIdx && splitAtEnd) { e = end; weight *= 0.5; }
+              if (e < s) e = s;
+              subRanges.push({ start: s, end: e, weight, text: origText });
+            }
+
+            const frText = (row.fr || '').trim();
+            const viText = (row.vi || '').trim();
+            const blockStart = Number(start.toFixed(2));
+            const blockEnd = Number(end.toFixed(2));
+
+            return {
+              time: firstLine.time || '',
+              start: blockStart,
+              end: blockEnd,
+              speaker: (row.speaker || '').trim(),
+              fr: frText,
+              vi: viText,
+              subs: buildKaraokeSubs(frText, viText, subRanges, blockStart, blockEnd)
+            };
+          });
+
+          videoMap[currentVideoId].transcript = blocks;
+          await saveToIDB();
+          updatePlaylistMetaUI();
+          refreshDropdown(currentVideoId, false);
+          currentTranscript = blocks;
+          activeIndex = -1;
+          activeSubIndex = -1;
+          renderOverlayStructure();
+          applySavedOverlayPosition();
+          renderTranscriptList();
+          syncSubtitle(true);
+          statusEl.textContent = `✓ Đã lưu vĩnh viễn ${blocks.length} lượt thoại Karaoke vào kho sao lưu!`;
+          return;
+        }
+
+        const byIndex = {};
+        parsed.forEach((row, idx) => {
+          const key = typeof row.i === 'number' ? row.i : idx;
+          byIndex[key] = row;
+        });
+
+        let updatedCount = 0;
+        videoMap[currentVideoId].transcript = baseTranscript.map((orig, idx) => {
+          const aiRow = byIndex[idx];
+          if (aiRow) {
+            updatedCount++;
+            const frText = (aiRow.fr || aiRow.text || orig.fr || orig.text || '').trim();
+            const viText = (aiRow.vi || '').trim();
+            return {
+              time: orig.time,
+              start: orig.start,
+              end: orig.end,
+              speaker: (aiRow.speaker || orig.speaker || '').trim(),
+              fr: frText,
+              vi: viText,
+              subs: buildKaraokeSubs(frText, viText, [], orig.start, orig.end)
+            };
+          }
+          return orig;
+        });
+
+        await saveToIDB();
+        updatePlaylistMetaUI();
+        refreshDropdown(currentVideoId, false);
+        currentTranscript = videoMap[currentVideoId].transcript;
+        activeIndex = -1;
+        activeSubIndex = -1;
+        renderOverlayStructure();
+        applySavedOverlayPosition();
+        renderTranscriptList();
+        syncSubtitle(true);
+        statusEl.textContent = `✓ Đã lưu vĩnh viễn bản dịch song ngữ (${updatedCount}/${baseTranscript.length} câu) vào kho!`;
+      } catch (err) {
+        alert('Không thể lưu vào bộ nhớ iPad:\n' + err.message);
+      }
+    });
+
+    // --- TRÌNH PHÁT YOUTUBE & ĐỒNG BỘ TÊN VIDEO + KARAOKE ---
+    async function syncRealYouTubeTitle() {
+      if (!ytPlayer?.getVideoData || !currentVideoId) return;
+      const info = videoMap[currentVideoId];
+      if (!info) return;
+
+      const data = ytPlayer.getVideoData();
+      const realTitle = (data?.title || '').trim();
+      if (!realTitle) return;
+
+      const isPlaceholder = !info.title || info.title === `Video [${currentVideoId}]`;
+      if (isPlaceholder && info.title !== realTitle) {
+        info.title = realTitle;
+        const opt = videoSelect.querySelector(`option[value="${currentVideoId}"]`);
+        if (opt) {
+          const tr = info.transcript || [];
+          const hasVi = tr.some(line => line.vi && line.vi.trim() !== '');
+          const tag = hasVi ? '★ Song ngữ' : (tr.length ? '✓ Pháp' : '○ Chưa có PĐ');
+          const pinPrefix = (currentVideoId === getPinnedVideoId()) ? '📌 ' : '';
+          opt.textContent = `${pinPrefix}[${currentVideoId}] ${realTitle} (${tag})`;
+        }
+        populateExportBox(info);
+        await saveToIDB();
+      }
+    }
+
+    async function playYouTubeVideo(videoId, startSec = 0) {
+      await ensureYouTubeApiLoaded();
+      const cleanStart = Math.max(0, Math.floor(startSec || 0));
+
+      if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+        ytPlayer.loadVideoById({ videoId, startSeconds: cleanStart });
+      } else {
+        ytPlayer = new YT.Player('ytPlayer', {
+          videoId,
+          playerVars: {
+            playsinline: 1,
+            fs: 0,
+            rel: 0,
+            cc_load_policy: 0,
+            start: cleanStart
+          },
+          events: {
+            onReady: () => syncRealYouTubeTitle(),
+            onStateChange: () => syncRealYouTubeTitle()
+          }
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function renderTranscriptList() {
+      transcriptBox.innerHTML = '';
+      currentTranscript.forEach((item, idx) => {
+        const vi = item.vi || '';
+        const div = document.createElement('div');
+        div.className = 'line';
+        div.id = 'line-' + idx;
+        div.innerHTML = `
+          <span class="time">${item.time || item.start.toFixed(1) + 's'}</span>
+          <div>
+            ${item.speaker ? `<span class="speaker-badge">${escapeHtml(item.speaker)}</span>` : ''}
+            <div class="line-fr">${renderKaraokeFrHtml(item, `data-l-idx="${idx}"`)}</div>
+            ${vi ? `<div class="line-vi">${renderKaraokeViHtml(item, `data-l-idx="${idx}"`)}</div>` : ''}
+          </div>
+        `;
+        div.onclick = (e) => {
+          const kSpan = e.target.closest('.k-seg');
+          const targetTime = kSpan ? Number(kSpan.dataset.start) : item.start;
+          seekTo(targetTime);
+        };
+        transcriptBox.appendChild(div);
+      });
+    }
+
+    function seekTo(seconds) {
+      if (ytPlayer?.seekTo) {
+        ytPlayer.seekTo(seconds, true);
+        ytPlayer.playVideo();
+      }
+      if (currentVideoId && getPinnedVideoId() === currentVideoId) {
+        savePinnedTimeOnly(seconds);
+      }
+    }
+
+    function updateKaraokeHighlight(blockIdx, subIdx) {
+      document.querySelectorAll('.k-seg.active').forEach(el => el.classList.remove('active'));
+      if (blockIdx === -1 || subIdx === -1) return;
+
+      document.querySelectorAll(`#subtitleBox .k-seg[data-k="${subIdx}"]`).forEach(el => el.classList.add('active'));
+      document.querySelectorAll(`.k-seg[data-v-idx="${blockIdx}"][data-k="${subIdx}"]`).forEach(el => el.classList.add('active'));
+      document.querySelectorAll(`.k-seg[data-l-idx="${blockIdx}"][data-k="${subIdx}"]`).forEach(el => el.classList.add('active'));
+    }
+
+    function syncSubtitle(forceRender = false) {
+      if (!currentVideoId || !ytPlayer?.getCurrentTime) return;
+      const currentTime = ytPlayer.getCurrentTime();
+
+      if (typeof currentTime === 'number' && !Number.isNaN(currentTime)) {
+        if (getPinnedVideoId() === currentVideoId && Math.abs(currentTime - lastSavedTime) >= 3) {
+          savePinnedTimeOnly(currentTime);
+        }
+      }
+
+      if (!currentTranscript.length) return;
+
+      const idx = currentTranscript.findIndex(item => currentTime >= item.start && currentTime <= item.end);
+      const turnChanged = idx !== activeIndex || forceRender;
+
+      if (turnChanged) {
+        if (activeIndex !== -1) {
+          document.getElementById('line-' + activeIndex)?.classList.remove('active');
+          document.getElementById('vsub-' + activeIndex)?.classList.remove('active');
+        }
+        activeIndex = idx;
+        activeSubIndex = -1;
+
+        if (subLayout === 'horizontal') {
+          const box = document.getElementById('subtitleBox');
+          if (box) {
+            if (idx !== -1) {
+              const item = currentTranscript[idx];
+              const fr = item.fr || item.text || '';
+              const vi = item.vi || '';
+              let html = '';
+              if (item.speaker) html += `<div class="speaker-badge">${escapeHtml(item.speaker)}</div>`;
+              if (showFr && fr) html += `<div class="sub-fr">${renderKaraokeFrHtml(item)}</div>`;
+              if (showVi && vi) html += `<div class="sub-vi">${renderKaraokeViHtml(item)}</div>`;
+              box.innerHTML = html;
+              if (customSubPos[getCurrentPosKey()]) clampOverlayInBounds();
+            } else {
+              box.innerHTML = '';
+            }
+          }
+        } else if (idx !== -1) {
+          const activeVSub = document.getElementById('vsub-' + idx);
+          const vSubList = document.getElementById('vSubList');
+          if (activeVSub && vSubList) {
+            activeVSub.classList.add('active');
+            const targetScroll = activeVSub.offsetTop - (vSubList.clientHeight / 2) + (activeVSub.clientHeight / 2);
+            vSubList.scrollTo({ top: Math.max(0, targetScroll), behavior: forceRender ? 'auto' : 'smooth' });
+          }
+        }
+
+        if (idx !== -1) {
+          const activeLine = document.getElementById('line-' + idx);
+          if (activeLine) {
+            activeLine.classList.add('active');
+            if (!forceRender) activeLine.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+      }
+
+      let subIdx = -1;
+      if (idx !== -1) {
+        const subs = currentTranscript[idx].subs || [];
+        subIdx = subs.findIndex(s => currentTime >= s.start && currentTime <= s.end);
+      }
+
+      if (turnChanged || subIdx !== activeSubIndex) {
+        activeSubIndex = subIdx;
+        updateKaraokeHighlight(idx, subIdx);
+      }
+    }
+
+    // --- KHỞI ĐỘNG HỆ THỐNG ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      applyLayoutMode();
+      const saved = await loadFromIDB();
+      hydrateState(saved || {});
+
+      const pinnedId = getPinnedVideoId();
+      const availableIds = getAvailableIds();
+
+      if (dbState.videos.length > 0) {
+        const resumeSec = (pinnedId && availableIds.includes(pinnedId)) ? getPinnedVideoTime() : 0;
+        refreshDropdown(pinnedId, true, resumeSec);
+        const subSavedCount = dbState.videos.filter(v => Array.isArray(v.transcript) && v.transcript.length > 0).length;
+        statusEl.textContent = `✓ Đã mở kho Playlist: Còn ${availableIds.length} video chưa xem (Đã xem: ${watchedSet.size} / Tổng: ${dbState.videos.length} | Đã lưu phụ đề: ${subSavedCount}).`;
+      } else {
+        refreshDropdown('', false, 0);
+      }
+
+      const syncedFromGitHub = await syncFromGitHubJson(true);
+      if (!syncedFromGitHub && dbState.playlist_id && dbState.auto_sync) {
+        syncFixedPlaylist(true);
+      } else if (!syncedFromGitHub && dbState.videos.length === 0) {
+        statusEl.textContent = 'Chưa thấy file playlist_data.json trên GitHub. Hãy vào tab Actions trên GitHub để chạy workflow lần đầu.';
+      }
+    });
+
+    setInterval(syncSubtitle, 100);
+  </script>
+</body>
+</html>
